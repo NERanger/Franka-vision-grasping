@@ -1,0 +1,10 @@
+initial_position:
+  - 0.5
+  - 0 
+  - 0.4
+  - 3.14
+  - 0.0
+  - 0.0
+x_stride: 0.1
+y_stride: 0.1
+z_stride: 0.1
