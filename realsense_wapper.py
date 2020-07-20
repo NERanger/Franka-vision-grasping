@@ -1,8 +1,9 @@
 import pyrealsense2 as rs
 import numpy as np
+import cv2
 
 class realsense(object):
-    def __init__(self, frame_width, frame_height, fps):
+    def __init__(self, frame_width = 640, frame_height = 480, fps = 30):
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
 
@@ -14,7 +15,7 @@ class realsense(object):
         self.cfg = self.pipeline.start(config)
 
     def get_color_intrinsics(self):
-        profile = cfg.get_stream(rs.stream.color) # Fetch stream profile for color stream
+        profile = self.cfg.get_stream(rs.stream.color) # Fetch stream profile for color stream
         intr = profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
 
         # print("ppx/cx: " + str(intr.ppx) + "\nppy/cy: " + str(intr.ppy))
@@ -27,7 +28,7 @@ class realsense(object):
 
     # Get a frame that can be processed in opencv
     def get_frame_cv(self):
-        frames = pipeline.wait_for_frames()
+        frames = self.pipeline.wait_for_frames()
         color_frame = frames.get_color_frame()
         depth_frame = frames.get_depth_frame()
 
@@ -42,4 +43,4 @@ if __name__ == '__main__':
     intr = cam.get_color_intrinsics()
     print(intr)
     depth, color = cam.get_frame_cv()
-    cv.imwrite('test.jpg', color)
+    cv2.imwrite('test.jpg', color)

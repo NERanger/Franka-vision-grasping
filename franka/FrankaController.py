@@ -102,24 +102,24 @@ class FrankaController(ArmController):
         #
         self.fk.setJointPos(target_joint)
 
-if __name__ == '__main__':
-    FC = FrankaController(ROOT + '/config/robcell-panda1-default-d435/'+'franka.yaml')
-    print(FC.getJoint())
-    print(FC.getCartesianPose())
-    allState = FC.getState()
-    print(allState['F_T_EE'])
-    print(allState['O_T_EE'])
+# if __name__ == '__main__':
+#     FC = FrankaController(ROOT + '/config/robcell-panda1-default-d435/'+'franka.yaml')
+#     print(FC.getJoint())
+#     print(FC.getCartesianPose())
+#     allState = FC.getState()
+#     print(allState['F_T_EE'])
+#     print(allState['O_T_EE'])
 
-    joint_target = np.array([-0.0137566,0.0150639,0.06416,-2.50988,-0.00736516,2.80153,-1.8411])
-    FC.move_j(joint_target)
-    pose = [0.5,0,0.4,3.14,0.0,0.0]
-    FC.move_p(pose)
-    # speed_j
-    joint_speed = [0,0,0,0,0,0,0.1]
-    FC.speed_j(joint_speed)
-    time.sleep(2)
-    FC.stopSpeed()
+#     joint_target = np.array([-0.0137566,0.0150639,0.06416,-2.50988,-0.00736516,2.80153,-1.8411])
+#     FC.move_j(joint_target)
+#     pose = [0.5,0,0.4,3.14,0.0,0.0]
+#     FC.move_p(pose)
+#     # speed_j
+#     joint_speed = [0,0,0,0,0,0,0.1]
+#     FC.speed_j(joint_speed)
+#     time.sleep(2)
+#     FC.stopSpeed()
 
-    FC.move_p([0.5,0,0.3,3.14,0.0,0.0])
-    FC.move_p([0.6,0,0.4,3.14,0.0,1.0])
-    FC.move_p([0.6,0.3,0.2,3.14,0.0,1.0])
+#     FC.move_p([0.5,0,0.3,3.14,0.0,0.0])
+#     FC.move_p([0.6,0,0.4,3.14,0.0,1.0])
+#     FC.move_p([0.6,0.3,0.2,3.14,0.0,1.0])

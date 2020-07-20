@@ -5,6 +5,10 @@ initial_position:
   - 3.14
   - 0.0
   - 0.0
-x_stride: 0.1
-y_stride: 0.1
-z_stride: 0.1
+x_stride: 0.05
+y_stride: 0.05
+z_stride: 0.05
+board_offset_x: 0
+board_offset_y: 0
+board_offset_z: 0
+save_dir: /cali_data/
