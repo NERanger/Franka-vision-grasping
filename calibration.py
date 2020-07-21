@@ -16,7 +16,7 @@ def read_cali_cfg(path):
     return out
 
 def image_callback(color_image, depth_image, intrinsics):
-    checkerboard_size = (3, 3)
+    checkerboard_size = (4, 3)
     refine_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     fx = intrinsics['fx']
     fy = intrinsics['fy']
@@ -92,6 +92,11 @@ if __name__ == '__main__':
     cam_pts = []
     arm_base_pts = []
 
+    print("Waiting for camera steady auto exposure...")
+    for i in range(20):
+        cam.get_frame_cv()
+    print("Done")
+
     for i in range(4):
         for j in range(4):
             for k in range(4):
@@ -108,15 +113,22 @@ if __name__ == '__main__':
                 print("Point in base frame:")
                 print(arm_base_pt)
 
+                cv2.imshow("rgb", color_frame)
+                cv2.waitKey(1)
+
                 if len(cam_pt) != 0:
                     cam_pts.append(cam_pt)
                     arm_base_pts.append(arm_base_pt)
+                else:
+                    print("No chessboard detected in this frame!")
 
-    filename = ROOT + cfg['save_dir'] + str(datetime.now().replace(' ', '-')) + ".npz"           
+    filename = ROOT + cfg['save_dir'] + str(datetime.now()).replace(' ', '-') + ".npz"           
     np.savez(filename, cam_pts, arm_base_pts)
 
-    R, t = get_rigid_transform(cam_pts, arm_base_pts)
-    H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
+    #R, t = get_rigid_transform(cam_pts, arm_base_pts)
+    #H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
+
+    H = load_cali_matrix(filename)
 
     print("Transformation matrix from arm base to camera:")
     print(H)
