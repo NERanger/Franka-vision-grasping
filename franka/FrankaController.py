@@ -85,6 +85,9 @@ class FrankaController(ArmController):
         # TCP to Flange
         O_T_F = np.dot(target_matrix,np.linalg.pinv(self.F_Matrix))
 
+        #print("O_T_F:")
+        #print(O_T_F)
+
         # inverse kinematics
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/Inverse_Kinematics')
         from franka import ikpy

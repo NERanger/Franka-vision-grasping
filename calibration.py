@@ -95,12 +95,16 @@ if __name__ == '__main__':
     for i in range(4):
         for j in range(4):
             for k in range(4):
-                arm.move_p([x + x_step * i, y + y_step * j, z + z_step * k,
-                            initial_pose[3], initial_pose[4], initial_pose[5]])
+                arm_target_x = round(x + x_step * i, 3)
+                arm_target_y = round(y + y_step * j, 3)
+                arm_target_z = round(z + z_step * k, 3)
+
+                arm.move_p([arm_target_x, arm_target_y, arm_target_z,
+                            round(initial_pose[3], 3), round(initial_pose[4], 3), round(initial_pose[5], 3)])
                 
                 depth_frame, color_frame = cam.get_frame_cv()
                 cam_pt = image_callback(color_frame, depth_frame, cam.get_color_intrinsics())
-                arm_base_pt = [x + x_step * i + x_offset, y + y_step * j + y_offset, z + z_step * k + z_offset]
+                arm_base_pt = [arm_target_x + x_offset, arm_target_y + y_offset, arm_target_z + z_offset]
                 print("Point in base frame:")
                 print(arm_base_pt)
 
