@@ -71,10 +71,12 @@ if __name__ == '__main__':
     sys.path.append(ROOT)
 
     arm = FrankaController(ROOT + '/config/franka.yaml')
-    cam = realsense()
+    cam = realsense(1920, 1080, 30)
     cfg = read_cali_cfg("config/calibration.yaml")
 
     initial_pose = cfg['initial_position']
+
+    cube_size = cfg['sample_cube_size']
 
     x_step = cfg['x_stride']
     y_step = cfg['y_stride']
@@ -95,11 +97,11 @@ if __name__ == '__main__':
     print("Waiting for camera steady auto exposure...")
     for i in range(20):
         cam.get_frame_cv()
-    print("Done")
+    print("Waiting for camera steady auto exposure... Done")
 
-    for i in range(4):
-        for j in range(4):
-            for k in range(4):
+    for i in range(cube_size):
+        for j in range(cube_size):
+            for k in range(cube_size):
                 arm_target_x = round(x + x_step * i, 3)
                 arm_target_y = round(y + y_step * j, 3)
                 arm_target_z = round(z + z_step * k, 3)
@@ -114,7 +116,7 @@ if __name__ == '__main__':
                 print(arm_base_pt)
 
                 cv2.imshow("rgb", color_frame)
-                cv2.waitKey(1)
+                #cv2.waitKey(1)
 
                 if len(cam_pt) != 0:
                     cam_pts.append(cam_pt)

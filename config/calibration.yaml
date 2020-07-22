@@ -5,10 +5,15 @@ initial_position:
   - 1.57
   - 0.0
   - 0.0
-x_stride: 0.0
+
+x_stride: 0.01
 y_stride: 0.01
 z_stride: 0.01
+
+sample_cube_size: 4 # Totally sampled points = size ^ 3
+
 board_offset_x: 0
 board_offset_y: 0
 board_offset_z: 0
+
 save_dir: /cali_data/
