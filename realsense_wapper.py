@@ -14,6 +14,14 @@ class realsense(object):
         # Start streaming
         self.cfg = self.pipeline.start(config)
 
+        depth_sensor = self.cfg.get_device().first_depth_sensor()
+        self.depth_scale = depth_sensor.get_depth_scale()
+
+        print("------ Realsense start info ------ ")
+        print("Frame size: " + str(frame_width) + "*" + str(frame_height))
+        print("FPS: " + fps)
+        print("Depth scale: " + str(self.depth_scale))
+
     def get_color_intrinsics(self):
         profile = self.cfg.get_stream(rs.stream.color) # Fetch stream profile for color stream
         intr = profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
