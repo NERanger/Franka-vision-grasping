@@ -2,4 +2,5 @@
 franka/RobotDriver.cpython-36m-aarch64-linux-gnu.so
 franka/RobotDriver/build/
 .pylintrc
-cali_data/
+cali_data/**
+networks/**

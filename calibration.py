@@ -15,7 +15,7 @@ def read_cali_cfg(path):
         out = yaml.safe_load(stream)
     return out
 
-def image_callback(color_image, depth_image, intrinsics):
+def image_callback(color_image, depth_image, intrinsics, depth_scale):
     checkerboard_size = (4, 3)
     refine_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     fx = intrinsics['fx']
@@ -32,7 +32,7 @@ def image_callback(color_image, depth_image, intrinsics):
         # Get observed checkerboard center 3D point in camera space
         checkerboard_pix = np.round(corners_refined[4, 0, :]).astype(int)
         checkerboard_z = np.mean(np.mean(depth_image[checkerboard_pix[1] - 20:checkerboard_pix[1] + 20,
-                                         checkerboard_pix[0] - 20:checkerboard_pix[0] + 20])) / 1000.0
+                                         checkerboard_pix[0] - 20:checkerboard_pix[0] + 20])) * depth_scale
         checkerboard_x = np.multiply(checkerboard_pix[0] - cx, checkerboard_z / fx)  # 1920, 1080
         checkerboard_y = np.multiply(checkerboard_pix[1] - cy, checkerboard_z / fy)  # 1920, 1080
         print("Found checkerboard, X,Y,Z = ", [checkerboard_x, checkerboard_y, checkerboard_z])
@@ -66,12 +66,40 @@ def load_cali_matrix(file_path):
     H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
     return H
 
+def check_trans_matrix(file_path):
+    data = np.load(file_path)
+    cam_pts = data['arr_0']
+    arm_base_pts = data['arr_1']
+    R, t = get_rigid_transform(cam_pts, arm_base_pts)
+    # H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
+
+    x_errs = []
+    y_errs = []
+    z_errs = []
+
+    for i, cam_pt in enumerate(cam_pts):
+        print("Point in cam: ", i , " ", cam_pt)
+        print("Point in base: ", i, " ", arm_base_pts[i])
+        trans_pt = np.dot(R, cam_pt) + t
+        print("Transed point: ", trans_pt)
+
+        x_errs.append(abs(trans_pt[0] - arm_base_pts[i][0]))
+        y_errs.append(abs(trans_pt[1] - arm_base_pts[i][1]))
+        z_errs.append(abs(trans_pt[2] - arm_base_pts[i][2]))
+
+    print("X-axis error: ", "max: ", max(x_errs), "min: ", min(x_errs), "mean: ", sum(x_errs)/len(x_errs))
+    print("Y-axis error: ", "max: ", max(y_errs), "min: ", min(y_errs), "mean: ", sum(y_errs)/len(y_errs))
+    print("Z-axis error: ", "max: ", max(z_errs), "min: ", min(z_errs), "mean: ", sum(z_errs)/len(z_errs))
+
+
+
+
 if __name__ == '__main__':
     ROOT = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(ROOT)
 
     arm = FrankaController(ROOT + '/config/franka.yaml')
-    cam = realsense(1920, 1080, 30)
+    cam = realsense(frame_width = 1280, frame_height = 720, fps = 30)
     cfg = read_cali_cfg("config/calibration.yaml")
 
     initial_pose = cfg['initial_position']
@@ -102,21 +130,21 @@ if __name__ == '__main__':
     for i in range(cube_size):
         for j in range(cube_size):
             for k in range(cube_size):
-                arm_target_x = round(x + x_step * i, 3)
-                arm_target_y = round(y + y_step * j, 3)
-                arm_target_z = round(z + z_step * k, 3)
+                arm_target_x = round(x + x_step * i, 5)
+                arm_target_y = round(y + y_step * j, 5)
+                arm_target_z = round(z + z_step * k, 5)
 
                 arm.move_p([arm_target_x, arm_target_y, arm_target_z,
-                            round(initial_pose[3], 3), round(initial_pose[4], 3), round(initial_pose[5], 3)])
+                            initial_pose[3], initial_pose[4], initial_pose[5]])
                 
                 depth_frame, color_frame = cam.get_frame_cv()
-                cam_pt = image_callback(color_frame, depth_frame, cam.get_color_intrinsics())
+                cam_pt = image_callback(color_frame, depth_frame, cam.intrinsics, cam.depth_scale)
                 arm_base_pt = [arm_target_x + x_offset, arm_target_y + y_offset, arm_target_z + z_offset]
                 print("Point in base frame:")
                 print(arm_base_pt)
 
                 cv2.imshow("rgb", color_frame)
-                #cv2.waitKey(1)
+                cv2.waitKey(1)
 
                 if len(cam_pt) != 0:
                     cam_pts.append(cam_pt)
@@ -132,5 +160,8 @@ if __name__ == '__main__':
 
     H = load_cali_matrix(filename)
 
-    print("Transformation matrix from arm base to camera:")
+    print("Transformation matrix from camera to arm base:")
+    #print(R, t)
     print(H)
+
+    check_trans_matrix(filename)

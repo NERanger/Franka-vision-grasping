@@ -14,31 +14,31 @@ class realsense(object):
         # Start streaming
         self.cfg = self.pipeline.start(config)
 
+        # Align depth frame to color frame
+        align_to = rs.stream.color
+        self.align = rs.align(align_to)
+
+        profile = self.cfg.get_stream(rs.stream.color) # Fetch stream profile for color stream
+        intr = profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
+        self.intrinsics = {'cx' : intr.ppx, 'cy' : intr.ppy, 'fx' : intr.fx, 'fy' : intr.fy}
+
         depth_sensor = self.cfg.get_device().first_depth_sensor()
-        self.depth_scale = depth_sensor.get_depth_scale()
+        self.depth_scale = round(depth_sensor.get_depth_scale(), 4)
 
         print("------ Realsense start info ------ ")
         print("Frame size: " + str(frame_width) + "*" + str(frame_height))
-        print("FPS: " + fps)
+        print("FPS: " + str(fps))
         print("Depth scale: " + str(self.depth_scale))
-
-    def get_color_intrinsics(self):
-        profile = self.cfg.get_stream(rs.stream.color) # Fetch stream profile for color stream
-        intr = profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
-
-        # print("ppx/cx: " + str(intr.ppx) + "\nppy/cy: " + str(intr.ppy))
-        # print("fx: " + str(intr.fx) + "\nfy: " + str(intr.fy))
-        # print("distortion coeffs: " + str(intr.coeffs))
-        # print("height: " + str(intr.height))
-        # print("width: " + str(intr.width))
-
-        return {'cx' : intr.ppx, 'cy' : intr.ppy, 'fx' : intr.fx, 'fy' : intr.fy}
+        print("Intrinsics: " + str(self.intrinsics))
+        print("---------------------------------- ")
 
     # Get a frame that can be processed in opencv
     def get_frame_cv(self):
         frames = self.pipeline.wait_for_frames()
-        color_frame = frames.get_color_frame()
-        depth_frame = frames.get_depth_frame()
+        aligned_frames = self.align.process(frames)
+
+        color_frame = aligned_frames.get_color_frame()
+        depth_frame = aligned_frames.get_depth_frame()
 
         # Convert images to numpy arrays ( can be read with opencv )
         depth_image = np.asanyarray(depth_frame.get_data())
@@ -47,8 +47,6 @@ class realsense(object):
         return depth_image, color_image
 
 if __name__ == '__main__':
-    cam = realsense()
-    intr = cam.get_color_intrinsics()
-    print(intr)
-    depth, color = cam.get_frame_cv()
-    cv2.imwrite('test.jpg', color)
+    cam = realsense(1280, 720, 30)
+    #depth, color = cam.get_frame_cv()
+    #cv2.imwrite('test.jpg', color)
