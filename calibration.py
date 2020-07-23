@@ -106,6 +106,8 @@ if __name__ == '__main__':
 
     cube_size = cfg['sample_cube_size']
 
+    maker_size = cfg['marker_size']
+
     x_step = cfg['x_stride']
     y_step = cfg['y_stride']
     z_step = cfg['z_stride']

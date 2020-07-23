@@ -10,6 +10,8 @@ x_stride: 0.07
 y_stride: 0.07
 z_stride: 0.07
 
+marker_size: 0.05 # in meter
+
 sample_cube_size: 3 # Totally sampled points = size ^ 3
 
 board_offset_x: 0

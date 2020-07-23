@@ -20,6 +20,8 @@ class realsense(object):
 
         profile = self.cfg.get_stream(rs.stream.color) # Fetch stream profile for color stream
         intr = profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
+        #print(intr.coeffs)
+        self.distortion_coeffs = intr.coeffs
         self.intrinsics = {'cx' : intr.ppx, 'cy' : intr.ppy, 'fx' : intr.fx, 'fy' : intr.fy}
 
         depth_sensor = self.cfg.get_device().first_depth_sensor()
@@ -46,7 +48,17 @@ class realsense(object):
 
         return depth_image, color_image
 
+    def get_intrinsics_matrix(self):
+        return np.array([self.intrinsics["fx"], 0, self.intrinsics["cx"], 0, self.intrinsics["fy"], self.intrinsics["cy"], 0, 0, 1]).reshape(3,3)
+
+    def get_distortion_coeffs(self):
+        return np.array(self.distortion_coeffs)
+
 if __name__ == '__main__':
     cam = realsense(1280, 720, 30)
+    intr = cam.get_intrinsics_matrix()
+    print(intr)
+    coeffs = cam.get_distortion_coeffs()
+    print(coeffs)
     #depth, color = cam.get_frame_cv()
     #cv2.imwrite('test.jpg', color)
