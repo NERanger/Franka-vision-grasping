@@ -25,19 +25,27 @@ def detect_ar_marker(color_frame, intr_matrix, dist_coeff):
 
 def get_mat_cam_T_marker(color_frame, maker_size, intr_matrix, dist_coeff):
     corners, ids = detect_ar_marker(color_frame, intr_matrix, dist_coeff)
-    R, t, _ = cv.aruco.estimatePoseSingleMarkers(corners, maker_size, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs())
 
-    # convert from 3x1 rotation vector to 3x3 rotation matrix
-    R, _ = cv.Rodrigues(R)
-    # Squeeze t for stacking
-    t = np.squeeze(t, 1).transpose()
+    if len(corners) > 0:
+        R, t, _ = cv.aruco.estimatePoseSingleMarkers(corners, maker_size, intr_matrix, dist_coeff)
 
-    padding = np.array([0, 0, 0, 1])
+        visualize_img = cv.aruco.drawAxis(color_frame, intr_matrix, dist_coeff, R, t, 0.03)
 
-    # Stack arrays to get transformation matrix H
-    H = np.vstack((np.hstack((R, t)), padding))
+        # convert from 3x1 rotation vector to 3x3 rotation matrix
+        R, _ = cv.Rodrigues(R)
+        # Squeeze t for stacking
+        t = np.squeeze(t, 1).transpose()
 
-    return H
+        padding = np.array([0, 0, 0, 1])
+
+        # Stack arrays to get transformation matrix H
+        H = np.vstack((np.hstack((R, t)), padding))
+        #print("Found marker, H = ", "\n", H)
+
+        return H, visualize_img
+
+    #print("No marker found in this frame !")
+    return [], color_frame
 
 if __name__ == '__main__':
 

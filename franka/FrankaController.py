@@ -27,6 +27,12 @@ class FrankaController(ArmController):
         self.v = self._cfg['velocity']
         self.fk.setPositioningVelocity(self.v)
 
+    def getMatrixO_T_EE(self):
+        O_T_EE = np.array(self.fk.getO_T_EE())
+        O_Matrix = np.reshape(O_T_EE,(4,4),order='F')
+
+        return O_Matrix
+
 
     def getCartesianPose(self):
         #O_T_EE: 4*4 Matrix from Base to EE

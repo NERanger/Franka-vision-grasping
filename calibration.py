@@ -6,6 +6,8 @@ import yaml
 import cv2
 import numpy as np
 
+import ar_marker
+
 from datetime import datetime
 from realsense_wapper import realsense
 from franka.FrankaController import FrankaController
@@ -121,8 +123,8 @@ if __name__ == '__main__':
     y = initial_pose[1]
     z = initial_pose[2]
 
-    cam_pts = []
-    arm_base_pts = []
+    cam_T_marker_mats = []
+    base_T_EE_mats = []
 
     print("Waiting for camera steady auto exposure...")
     for i in range(20):
@@ -139,31 +141,35 @@ if __name__ == '__main__':
                 arm.move_p([arm_target_x, arm_target_y, arm_target_z,
                             initial_pose[3], initial_pose[4], initial_pose[5]])
                 
-                depth_frame, color_frame = cam.get_frame_cv()
-                cam_pt = image_callback(color_frame, depth_frame, cam.intrinsics, cam.depth_scale)
-                arm_base_pt = [arm_target_x + x_offset, arm_target_y + y_offset, arm_target_z + z_offset]
-                print("Point in base frame:")
-                print(arm_base_pt)
+                _, color_frame = cam.get_frame_cv()
 
-                cv2.imshow("rgb", color_frame)
-                cv2.waitKey(1)
+                # cam_pt = image_callback(color_frame, depth_frame, cam.intrinsics, cam.depth_scale)
+                #arm_base_pt = [arm_target_x + x_offset, arm_target_y + y_offset, arm_target_z + z_offset]
+                cam_T_marker, visualize_img = ar_marker.get_mat_cam_T_marker(color_frame, maker_size, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs())
+                base_T_EE = arm.getMatrixO_T_EE()
 
-                if len(cam_pt) != 0:
-                    cam_pts.append(cam_pt)
-                    arm_base_pts.append(arm_base_pt)
+                print("End Effector in base frame:\n", base_T_EE)
+
+                cv2.imshow("visualize_img", visualize_img)
+                cv2.waitKey(10)
+
+                if len(cam_T_marker) != 0:
+                    cam_T_marker_mats.append(cam_T_marker)
+                    base_T_EE_mats.append(base_T_EE)
+                    print("Found marker in camera frame, H = ", "\n", cam_T_marker)
                 else:
-                    print("No chessboard detected in this frame!")
+                    print("No marker detected in this frame!")
 
-    filename = ROOT + cfg['save_dir'] + str(datetime.now()).replace(' ', '-') + ".npz"           
-    np.savez(filename, cam_pts, arm_base_pts)
+    # filename = ROOT + cfg['save_dir'] + str(datetime.now()).replace(' ', '-') + ".npz"           
+    # np.savez(filename, cam_pts, arm_base_pts)
 
-    #R, t = get_rigid_transform(cam_pts, arm_base_pts)
-    #H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
+    # #R, t = get_rigid_transform(cam_pts, arm_base_pts)
+    # #H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
 
-    H = load_cali_matrix(filename)
+    # H = load_cali_matrix(filename)
 
-    print("Transformation matrix from camera to arm base:")
-    #print(R, t)
-    print(H)
+    # print("Transformation matrix from camera to arm base:")
+    # #print(R, t)
+    # print(H)
 
-    check_trans_matrix(filename)
+    # check_trans_matrix(filename)
