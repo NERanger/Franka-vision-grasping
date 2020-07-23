@@ -36,16 +36,16 @@ def get_mat_cam_T_marker(color_frame, maker_size, intr_matrix, dist_coeff):
         # Squeeze t for stacking
         t = np.squeeze(t, 1).transpose()
 
-        padding = np.array([0, 0, 0, 1])
+        #padding = np.array([0, 0, 0, 1])
 
         # Stack arrays to get transformation matrix H
-        H = np.vstack((np.hstack((R, t)), padding))
+        #H = np.vstack((np.hstack((R, t)), padding))
         #print("Found marker, H = ", "\n", H)
 
-        return H, visualize_img
+        return R, t, visualize_img
 
     #print("No marker found in this frame !")
-    return [], color_frame
+    return [], [], color_frame
 
 if __name__ == '__main__':
 
@@ -67,6 +67,7 @@ if __name__ == '__main__':
             R, t, _ = cv.aruco.estimatePoseSingleMarkers(corners, 0.05, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs())
 
             R_mat, _ = cv.Rodrigues(R)
+            #R_mat = np.squeeze(R_mat, 0)
             t = np.squeeze(t, 1).transpose()
 
             print("R: ", type(R_mat), "Shape: ", R_mat.shape, "\n", R_mat)

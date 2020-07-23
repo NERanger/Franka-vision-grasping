@@ -2,6 +2,14 @@ initial_position:
   - 0.45
   - -0.10 
   - 0.45
+  - 2.0
+  - 0.0
+  - 0.0
+
+second_position:
+  - 0.45
+  - -0.10 
+  - 0.45
   - 1.57
   - 0.0
   - 0.0
@@ -12,7 +20,7 @@ z_stride: 0.07
 
 marker_size: 0.05 # in meter
 
-sample_cube_size: 3 # Totally sampled points = size ^ 3
+sample_cube_size: 2 # Totally sampled points = size ^ 3
 
 board_offset_x: 0
 board_offset_y: 0

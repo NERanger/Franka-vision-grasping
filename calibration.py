@@ -68,7 +68,7 @@ def load_cali_matrix(file_path):
     H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
     return H
 
-def check_trans_matrix(file_path):
+def check_trans_matrix_from_file(file_path):
     data = np.load(file_path)
     cam_pts = data['arr_0']
     arm_base_pts = data['arr_1']
@@ -93,6 +93,15 @@ def check_trans_matrix(file_path):
     print("Y-axis error: ", "max: ", max(y_errs), "min: ", min(y_errs), "mean: ", sum(y_errs)/len(y_errs))
     print("Z-axis error: ", "max: ", max(z_errs), "min: ", min(z_errs), "mean: ", sum(z_errs)/len(z_errs))
 
+def save_mat_to_file(cam_T_marker_mats, base_T_EE_mats, cam_T_marker_mats_filename, base_T_EE_mats_filename):
+    with open(cam_T_marker_mats_filename, 'w') as out:
+        for mat in cam_T_marker_mats:
+            np.savetxt(out, mat, delimiter=',')
+
+    with open(base_T_EE_mats_filename, 'w') as out:
+        for mat in base_T_EE_mats:
+            np.savetxt(out, mat, delimiter=',')
+
 
 
 
@@ -105,6 +114,7 @@ if __name__ == '__main__':
     cfg = read_cali_cfg("config/calibration.yaml")
 
     initial_pose = cfg['initial_position']
+    second_pose = cfg['second_position']
 
     cube_size = cfg['sample_cube_size']
 
@@ -123,13 +133,19 @@ if __name__ == '__main__':
     y = initial_pose[1]
     z = initial_pose[2]
 
-    cam_T_marker_mats = []
-    base_T_EE_mats = []
+    #base_pts = []
+
+    cam_T_marker_mats_R = []
+    cam_T_marker_mats_t = []
+    EE_T_base_mats_R = []
+    EE_T_base_mats_t = []
 
     print("Waiting for camera steady auto exposure...")
     for i in range(20):
         cam.get_frame_cv()
     print("Waiting for camera steady auto exposure... Done")
+
+    cv2.namedWindow('visualize_img', cv2.WINDOW_AUTOSIZE)
 
     for i in range(cube_size):
         for j in range(cube_size):
@@ -138,30 +154,45 @@ if __name__ == '__main__':
                 arm_target_y = round(y + y_step * j, 5)
                 arm_target_z = round(z + z_step * k, 5)
 
-                arm.move_p([arm_target_x, arm_target_y, arm_target_z,
-                            initial_pose[3], initial_pose[4], initial_pose[5]])
+                if(j == 0):
+                    arm.move_p([arm_target_x, arm_target_y, arm_target_z, initial_pose[3], initial_pose[4], initial_pose[5]])
+                else:
+                    arm.move_p([arm_target_x, arm_target_y, arm_target_z, second_pose[3], second_pose[4], second_pose[5]])
                 
                 _, color_frame = cam.get_frame_cv()
 
                 # cam_pt = image_callback(color_frame, depth_frame, cam.intrinsics, cam.depth_scale)
                 #arm_base_pt = [arm_target_x + x_offset, arm_target_y + y_offset, arm_target_z + z_offset]
-                cam_T_marker, visualize_img = ar_marker.get_mat_cam_T_marker(color_frame, maker_size, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs())
-                base_T_EE = arm.getMatrixO_T_EE()
+                cam_T_marker_R, cam_T_marker_t, visualize_img = ar_marker.get_mat_cam_T_marker(color_frame, maker_size, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs())
+                base_T_EE_R, base_T_EE_t = arm.getMatrixO_T_EE()
 
-                print("End Effector in base frame:\n", base_T_EE)
+                print("End Effector in base frame:\n", "R:\n", base_T_EE_R, "t:\n", base_T_EE_t)
 
                 cv2.imshow("visualize_img", visualize_img)
-                cv2.waitKey(10)
+                cv2.waitKey(20)
 
-                if len(cam_T_marker) != 0:
-                    cam_T_marker_mats.append(cam_T_marker)
-                    base_T_EE_mats.append(base_T_EE)
-                    print("Found marker in camera frame, H = ", "\n", cam_T_marker)
+                if len(cam_T_marker_R) != 0:
+                    cam_T_marker_mats_R.append(cam_T_marker_R.transpose())
+                    cam_T_marker_mats_t.append(-np.dot(cam_T_marker_R.transpose(), cam_T_marker_t))
+                    EE_T_base_mats_R.append(base_T_EE_R.transpose())
+                    EE_T_base_mats_t.append(-np.dot(base_T_EE_R.transpose(), base_T_EE_t))
+                    print("Found marker in camera frame\n", "R:\n", cam_T_marker_R, "t:\n", cam_T_marker_t)
                 else:
                     print("No marker detected in this frame!")
 
-    # filename = ROOT + cfg['save_dir'] + str(datetime.now()).replace(' ', '-') + ".npz"           
+    cv2.destroyAllWindows()
+
+    print("Performing calibration...")
+    base_T_cam_R, base_T_cam_t= cv2.calibrateHandEye(EE_T_base_mats_R, EE_T_base_mats_t, cam_T_marker_mats_R, cam_T_marker_mats_t, method = cv2.CALIB_HAND_EYE_TSAI)
+    print("Performing calibration... Done")
+
+    print("From arm base to camera:\n", "R:\n", base_T_cam_R, "t:\n", base_T_cam_t)
+
+    #cam_T_marker_mats_filename = ROOT + cfg['save_dir'] + "cam_T_marker" + str(datetime.now()).replace(' ', '-') + ".csv"
+    #base_T_EE_mats_filename = ROOT + cfg['save_dir'] + "base_T_EE" + str(datetime.now()).replace(' ', '-') + ".csv"            
+    
     # np.savez(filename, cam_pts, arm_base_pts)
+    #save_mat_to_file(cam_T_marker_mats, base_T_EE_mats, cam_T_marker_mats_filename, base_T_EE_mats_filename)
 
     # #R, t = get_rigid_transform(cam_pts, arm_base_pts)
     # #H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])

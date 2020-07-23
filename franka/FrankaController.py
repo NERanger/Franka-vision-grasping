@@ -30,8 +30,10 @@ class FrankaController(ArmController):
     def getMatrixO_T_EE(self):
         O_T_EE = np.array(self.fk.getO_T_EE())
         O_Matrix = np.reshape(O_T_EE,(4,4),order='F')
+        O_Matrix_R = O_Matrix[:3, :3]
+        O_Matrix_t = O_Matrix[:3, 3:].squeeze(1)
 
-        return O_Matrix
+        return O_Matrix_R, O_Matrix_t
 
 
     def getCartesianPose(self):
