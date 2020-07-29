@@ -34,7 +34,7 @@ def get_mat_cam_T_marker(color_frame, maker_size, intr_matrix, dist_coeff):
         # convert from 3x1 rotation vector to 3x3 rotation matrix
         R, _ = cv.Rodrigues(R)
         # Squeeze t for stacking
-        t = np.squeeze(t, 1).transpose()
+        t = np.squeeze(t, 1).squeeze()
 
         #padding = np.array([0, 0, 0, 1])
 
