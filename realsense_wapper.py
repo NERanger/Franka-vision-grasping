@@ -9,7 +9,12 @@ class realsense(object):
 
         config = rs.config()
         config.enable_stream(rs.stream.depth, frame_width, frame_height, rs.format.z16, fps)
-        config.enable_stream(rs.stream.color, frame_width, frame_height, rs.format.bgr8, fps)
+        config.enable_stream(rs.stream.color, frame_width, frame_height, rs.format.rgb8, fps)
+
+        self.color_frame_width = frame_width
+        self.color_frame_height = frame_height
+        self.depth_frame_width = frame_width
+        self.depth_frame_height = frame_height
 
         # Start streaming
         self.cfg = self.pipeline.start(config)
@@ -30,6 +35,8 @@ class realsense(object):
         print("------ Realsense start info ------ ")
         print("Frame size: " + str(frame_width) + "*" + str(frame_height))
         print("FPS: " + str(fps))
+        print("Color frame format: ", rs.format.rgb8)
+        print("Depth frame format: ", rs.format.z16)
         print("Depth scale: " + str(self.depth_scale))
         print("Intrinsics: " + str(self.intrinsics))
         print("---------------------------------- ")
