@@ -1,0 +1,12 @@
+conf_threshold: 0.90      # minimum confidence to launch grasping stage
+detection_threshold: 0.5  # minimum detection threshold to use
+
+effector_offset: 0.05     # distance from flann center to the grasping center (in meter)
+
+network: coco-bottle      # pre-trained model to load
+overlay: box,labels,conf  # detection overlay flags (e.g. --overlay=box,labels,conf)\nvalid combinations are:  'box', 'labels', 'conf', 'none'
+width: 1280               # desired width of camera stream
+height: 720               # desired height of camera stream
+fps: 30                   # desired frame rate from camera
+
+matrix_path: /home/jetsonx-bionicdl/JingYL/repos/franka_ctl_py/cali_data/2020-07-29-21:29:06.415985.csv

@@ -1,44 +1,51 @@
+import argparse
+import sys
+import os
+import yaml
+
 import jetson.inference
 import jetson.utils
 
+import numpy as np
+
 from realsense_wapper import realsense
 
-import argparse
-import sys
+from franka.FrankaController import FrankaController
 
-# convert colorspace
-def convert_color(img, output_format):
-	converted_img = jetson.utils.cudaAllocMapped(width=img.width, height=img.height, format=output_format)
-	jetson.utils.cudaConvertColor(img, converted_img)
-	return converted_img
+def read_cfg(path):
+    with open(path, 'r') as stream:
+        out = yaml.safe_load(stream)
+    return out
+
+def load_base_T_cam_matrix(file_path):
+	H =  np.loadtxt(file_path, delimiter = ',')
+	
+	base_T_cam_R = H[:3, :3]
+	base_T_cam_t = H[:3, 3:].squeeze(1)
+
+	cam_T_base_R = base_T_cam_R.transpose()
+	cam_T_base_t = -cam_T_base_R.dot(base_T_cam_t)
+
+	return R, t
 
 if __name__ == '__main__':
-	# parse the command line
-	parser = argparse.ArgumentParser(description="Locate objects in a live camera stream using an object detection DNN.", 
-							formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.detectNet.Usage())
 
-	parser.add_argument("--network", type=str, default="ssd-mobilenet-v2", help="pre-trained model to load (see below for options)")
-	parser.add_argument("--overlay", type=str, default="box,labels,conf", help="detection overlay flags (e.g. --overlay=box,labels,conf)\nvalid combinations are:  'box', 'labels', 'conf', 'none'")
-	parser.add_argument("--threshold", type=float, default=0.5, help="minimum detection threshold to use") 
-	# parser.add_argument("--camera", type=str, default="0", help="index of the MIPI CSI camera to use (e.g. CSI camera 0)\nor for VL42 cameras, the /dev/video device to use.\nby default, MIPI CSI camera 0 will be used.")
-	parser.add_argument("--width", type=int, default=1280, help="desired width of camera stream (default is 1280 pixels)")
-	parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
-	parser.add_argument("--fps", type=int, default=30, help="desired frame rate for camera")
+	ROOT = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(ROOT)
 
-	try:
-		opt = parser.parse_known_args()[0]
-	except:
-		print("")
-		parser.print_help()
-		sys.exit(0)
+    arm = FrankaController(ROOT + '/config/franka.yaml')
+	
+	opt = read_cfg(config/grasping.yaml)
 
-	cam = realsense(frame_width = opt.width, frame_height = opt.height, fps = opt.fps)
+	R, t = load_base_T_cam_matrix(opt['matrix_path'])
+
+	print("Load R, t from file:\nR:\n", R, "\nt:\n", t)
+
+	cam = realsense(frame_width = opt['width'], frame_height = opt['height'], fps = opt['fps'])
 
 	# load the object detection network
-	net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)
+	net = jetson.inference.detectNet(opt['network'], sys.argv, opt['threshold'])
 
-	# # create the camera and display
-	# camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
 	display = jetson.utils.glDisplay()
 
 	# process frames until user exits
@@ -52,13 +59,13 @@ if __name__ == '__main__':
 		color_img_cuda = jetson.utils.cudaFromNumpy(color_img)
 
 		# allocate gpu memory for network input image as rgba32f, with the same width/height as the color frame
-		network_input_img = jetson.utils.cudaAllocMapped(width=1280, height=720, format='rgba32f')
+		network_input_img = jetson.utils.cudaAllocMapped(width = cam.color_frame_width, height = cam.color_frame_height, format='rgba32f')
 
-		# convert from bgr8 (default format for realsense color frame) to rgba32f
+		# convert from rgb8 (default format for realsense color frame in this program) to rgba32f
 		jetson.utils.cudaConvertColor(color_img_cuda, network_input_img)
 
 		# detect objects in the image (with overlay)
-		detections = net.Detect(network_input_img, cam.color_frame_width, cam.color_frame_height, opt.overlay)
+		detections = net.Detect(network_input_img, cam.color_frame_width, cam.color_frame_height, opt['overlay'])
 
 		# print the detections
 		print("detected {:d} objects in image".format(len(detections)))
@@ -70,7 +77,27 @@ if __name__ == '__main__':
 		display.RenderOnce(network_input_img, cam.color_frame_width, cam.color_frame_height)
 
 		# update the title bar
-		display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
+		display.SetTitle("{:s} | Network {:.0f} FPS".format(opt['network'], net.GetNetworkFPS()))
 
 		# print out performance info
-		net.PrintProfilerTimes()
+		# net.PrintProfilerTimes()
+
+		if(len(detections) != 0):
+			for detection in detections:
+				if detection.Confidence > 0.90:
+					obj_center = int(detection.Center)
+					# compute target coordinate in camera frame
+					target_in_cam_z = depth_img[obj_center[0], obj_center[1]]
+					target_in_cam_x = np.multiply(obj_center[0] - cam.intrinsics['cx'], target_in_cam_z / cam.intrinsics['fx'])
+					target_in_cam_y = np.multiply(obj_center[1] - cam.intrinsics['cy'], target_in_cam_z / cam.intrinsics['fy'])
+
+					print("Target in camera frame:\n", [target_in_cam_x, target_in_cam_y, target_in_cam_z])
+
+					target_in_cam = np.array([target_in_cam_x, target_in_cam_y, target_in_cam_z])
+					target_in_base = R.dot(target_in_cam) + t
+
+					arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2], 3.14, 0, 0])
+
+
+
+
