@@ -27,8 +27,8 @@ def load_cali_matrix(file_path):
     EE_T_base_mats_R = data['arr_2']
     EE_T_base_mats_t = data['arr_3']
 
-    base_T_cam_R, base_T_cam_t = cv2.calibrateHandEye(EE_T_base_mats_R, EE_T_base_mats_t, cam_T_marker_mats_R, cam_T_marker_mats_t)
-    return base_T_cam_R, base_T_cam_t
+    cam_T_base_R, cam_T_base_t = cv2.calibrateHandEye(EE_T_base_mats_R, EE_T_base_mats_t, cam_T_marker_mats_R, cam_T_marker_mats_t)
+    return cam_T_base_R, cam_T_base_t
 
 def random_sample(lower_limit, upper_limit, shape):
     size = upper_limit - lower_limit
@@ -44,14 +44,29 @@ def get_H_from_R_t(R, t):
 
 def check_trans_matrix_from_file(file_path):
 
-    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
     import matplotlib.pyplot as plt
+    import pytransform3d.transformations as ptrans
+    from pytransform3d.transform_manager import TransformManager
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
     data = np.load(file_path)
-    cam_pts = data['arr_0']
-    arm_base_pts = data['arr_1']
-    R, t = get_rigid_transform(cam_pts, arm_base_pts)
-    # H = np.concatenate([np.concatenate([R,t.reshape([3,1])],axis=1),np.array([0, 0, 0, 1]).reshape(1,4)])
+
+    cam_T_marker_mats_R = data['arr_0']
+    cam_T_marker_mats_t = data['arr_1']
+
+    EE_T_base_mats_R = data['arr_2']
+    EE_T_base_mats_t = data['arr_3']
+
+    cam_T_base_R, cam_T_base_t = cv2.calibrateHandEye(EE_T_base_mats_R, EE_T_base_mats_t, cam_T_marker_mats_R, cam_T_marker_mats_t)
+
+    # chane (3,1) shape to (3, )
+    cam_T_base_t = cam_T_base_t.squeeze(1)
+
+    print("cam_T_base_R:\n", cam_T_base_R.shape, "\n", cam_T_base_R)
+    print("cam_T_base_t:\n", cam_T_base_t.shape, "\n", cam_T_base_t)
+
+    base_T_cam_R = cam_T_base_R.transpose()
+    base_T_cam_t = -cam_T_base_R.transpose().dot(cam_T_base_t)
 
     x_errs = []
     y_errs = []
@@ -59,18 +74,23 @@ def check_trans_matrix_from_file(file_path):
     abs_errs = []
 
     trans_pts = []
+    base_T_EE_mats_t = []
 
-    for i, cam_pt in enumerate(cam_pts):
-        print("Point in cam: ", i , " ", cam_pt)
-        print("Point in base: ", i, " ", arm_base_pts[i])
-        trans_pt = np.dot(R, cam_pt) + t
+    for i, EE_T_base_t in enumerate(EE_T_base_mats_t):
+        base_T_EE_t = -EE_T_base_mats_R[i].transpose().dot(EE_T_base_t)
+        base_T_EE_mats_t.append(base_T_EE_t) # For visualization
+
+        print("Point in base: ", i ," ", base_T_EE_t.transpose().shape, " ", base_T_EE_t)
+        print("Point in camera: ", i, " ",cam_T_marker_mats_t[i].shape, " ", cam_T_marker_mats_t[i])
+        trans_pt = np.add(cam_T_base_R.dot(cam_T_marker_mats_t[i]), cam_T_base_t)
         trans_pts.append(trans_pt)
-        print("Transed point: ", trans_pt)
+        print("Transed point: ", trans_pt.shape, trans_pt)
 
-        x_errs.append(abs(trans_pt[0] - arm_base_pts[i][0]))
-        y_errs.append(abs(trans_pt[1] - arm_base_pts[i][1]))
-        z_errs.append(abs(trans_pt[2] - arm_base_pts[i][2]))
-        abs_errs.append(np.sqrt(np.square(trans_pt[0] - arm_base_pts[i][0]) + np.square(trans_pt[1] - arm_base_pts[i][1]) + np.square(trans_pt[2] - arm_base_pts[i][2])))
+        x_errs.append(abs(trans_pt[0] - base_T_EE_t[0]))
+        y_errs.append(abs(trans_pt[1] - base_T_EE_t[1]))
+        z_errs.append(abs(trans_pt[2] - base_T_EE_t[2]))
+        abs_errs.append(np.sqrt(np.square(trans_pt[0] - base_T_EE_t[0]) + np.square(trans_pt[1] - base_T_EE_t[1]) 
+                                + np.square(trans_pt[2] - base_T_EE_t[2])))
 
     print("X-axis error: ", "max: ", max(x_errs), "min: ", min(x_errs), "mean: ", sum(x_errs)/len(x_errs))
     print("Y-axis error: ", "max: ", max(y_errs), "min: ", min(y_errs), "mean: ", sum(y_errs)/len(y_errs))
@@ -84,11 +104,17 @@ def check_trans_matrix_from_file(file_path):
     fig_3d = plt.figure(2)
     ax = fig_3d.add_subplot(111, projection='3d')
 
-    for pt in arm_base_pts:
+    for pt in cam_T_marker_mats_t:
         ax.scatter(pt[0], pt[1], pt[2], marker='^')
 
     for pt in trans_pts:
         ax.scatter(pt[0], pt[1], pt[2], marker='.')
+
+    plt.figure(3)
+    base_T_cam = ptrans.transform_from(base_T_cam_R, base_T_cam_t, True)
+    tm = TransformManager()
+    tm.add_transform("base", "cam", base_T_cam)
+    axis = tm.plot_frames_in("base", s=0.3)
 
     plt.show()
 
@@ -193,13 +219,13 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
 
     print("Performing calibration...")
-    base_T_cam_R, base_T_cam_t = cv2.calibrateHandEye(EE_T_base_mats_R, EE_T_base_mats_t, cam_T_marker_mats_R, cam_T_marker_mats_t)
+    cam_T_base_R, cam_T_base_t = cv2.calibrateHandEye(EE_T_base_mats_R, EE_T_base_mats_t, cam_T_marker_mats_R, cam_T_marker_mats_t)
     print("Performing calibration... Done")
 
-    print("From base to camera:\n", "R:\n", base_T_cam_R, "\nt:\n", base_T_cam_t)
+    print("From camera to base:\n", "R:\n", cam_T_base_R, "\nt:\n", cam_T_base_t)
 
     # Stack arrays to get transformation matrix H
-    base_T_cam_H = get_H_from_R_t(base_T_cam_R, base_T_cam_t)
+    base_T_cam_H = get_H_from_R_t(cam_T_base_R, cam_T_base_t)
     print("H:\n", base_T_cam_H)
     # cam_T_marker_mats_filename = ROOT + cfg['save_dir'] + "cam_T_marker" + str(datetime.now()).replace(' ', '-') + ".csv"
     filename_csv = ROOT + cfg['save_dir'] + str(datetime.now()).replace(' ', '-') + ".csv"   
@@ -213,3 +239,5 @@ if __name__ == '__main__':
     print("Loaded R:\n", load_R)
     print("Loaded t:\n", load_t)
     print("-------- End ----------")
+
+    #check_trans_matrix_from_file("/home/jetsonx-bionicdl/JingYL/repos/franka_ctl_py/cali_data/2020-08-01-09:57:10.492520.npz")
