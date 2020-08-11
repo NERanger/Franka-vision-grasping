@@ -4,3 +4,4 @@ franka/RobotDriver/build/
 .pylintrc
 cali_data/**
 networks/**
+log/**
