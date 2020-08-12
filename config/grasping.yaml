@@ -6,6 +6,14 @@ initial_position:
   - 0.0
   - 0.0
 
+drop_position:
+  - 0.45
+  - 0.0
+  - 0.30
+  - 3.14
+  - 0.0
+  - 0.0
+
 conf_threshold: 0.80      # minimum confidence to launch grasping stage
 # detection_threshold: 0.5  # minimum detection threshold to use
 
@@ -13,6 +21,8 @@ grasp_prepare_offset: 0.10
 effector_offset: 0.25    # distance from flann center to the grasping center (in meter)
 
 grasp_width: 0.050
+
+detection_turncation: 640 # assume the detection box center locates at (x, y), when x < detection_turncation, the detection won't be used for grasping
 
 # network: coco-bottle      # pre-trained model to load
 # overlay: box,labels,conf  # detection overlay flags (e.g. --overlay=box,labels,conf)\nvalid combinations are:  'box', 'labels', 'conf', 'none'
@@ -22,5 +32,5 @@ fps: 30                   # desired frame rate from camera
 
 matrix_path: /home/jetsonx-bionicdl/JingYL/repos/franka_ctl_py/cali_data/2020-08-11-11:29:21.275573.csv
 
-time_evaluate: true
-log: true
+time_evaluate: false
+log: false

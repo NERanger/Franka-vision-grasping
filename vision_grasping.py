@@ -10,13 +10,10 @@ import jetson.utils
 
 import numpy as np
 import cv2 as cv
-
 import gripper_control as gripper
 
 from datetime import datetime
-
 from realsense_wapper import realsense
-
 from franka.FrankaController import FrankaController
 
 def read_cfg(path):
@@ -62,6 +59,7 @@ if __name__ == '__main__':
 
 	time_evaluate = cfg['time_evaluate']
 	initial_pose = cfg['initial_position']
+	drop_position = cfg['drop_position']
 	conf_threshold = cfg['conf_threshold']
 	is_logging = cfg['log']
 
@@ -70,6 +68,8 @@ if __name__ == '__main__':
 
 	grasp_pre_offset = cfg['grasp_prepare_offset']
 	effector_offset = cfg['effector_offset']
+
+	detection_turncation = cfg['detection_turncation']
 
 	grasp_width = cfg['grasp_width']
 
@@ -131,9 +131,13 @@ if __name__ == '__main__':
 					obj_center_row = int(detection.Center[1])
 					obj_center_col = int(detection.Center[0])
 
+					if(obj_center_col < detection_turncation):
+						print("Discard detection result: in turncation area")
+						continue
+
 					if(is_logging):
 						log_img = cv.cvtColor(color_img, cv.COLOR_RGB2BGR)
-						cv.circle(log_img, (obj_center_col, obj_center_row), 20, (0, 0, 255))
+						cv.circle(log_img, (obj_center_col, obj_center_row), 20, (0, 0, 255), thickness = 3)
 						cv.imwrite(current_log_dir + '/' + str(time.time()) + '.jpg', log_img)
 
 					# compute target coordinate in camera frame
@@ -155,8 +159,13 @@ if __name__ == '__main__':
 					arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2] + effector_offset, 3.14, 0, 0])
 					gripper.gripper_close()
 
+					# Move to drop position and drop object
 					arm.move_p(initial_pose)
+					arm.move_p(drop_position)
 					gripper.gripper_open()
+
+					# Back to initial position
+					arm.move_p(initial_pose)
 
 		# pause for a bit
 		# time.sleep(3)
