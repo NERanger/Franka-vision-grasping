@@ -1,12 +1,19 @@
 import argparse
 import sys
+import signal
 import os
+import time
 import yaml
 
 import jetson.inference
 import jetson.utils
 
 import numpy as np
+import cv2 as cv
+
+import gripper_control as gripper
+
+from datetime import datetime
 
 from realsense_wapper import realsense
 
@@ -53,17 +60,34 @@ if __name__ == '__main__':
 	cam = realsense(frame_width = cfg['width'], frame_height = cfg['height'], fps = cfg['fps'])
 	net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)  # load the object detection network
 
+	time_evaluate = cfg['time_evaluate']
 	initial_pose = cfg['initial_position']
+	conf_threshold = cfg['conf_threshold']
+	is_logging = cfg['log']
 
 	R, t = load_cam_T_base_matrix(cfg['matrix_path'])
 	print("Load R, t from file:\nR:\n", R, "\nt:\n", t)
 
+	grasp_pre_offset = cfg['grasp_prepare_offset']
+	effector_offset = cfg['effector_offset']
+
+	grasp_width = cfg['grasp_width']
+
 	display = jetson.utils.glDisplay()
 
+	print("Moving to initial position...")
 	arm.move_p(initial_pose)
+	print("Moving to initial position... Done")
 
-	# process frames until user exits
+	if(is_logging):
+		current_log_dir = ROOT + '/log/' + str(datetime.now()).replace(' ', '-')
+		os.mkdir(current_log_dir)
+		print("Set log dir to " + current_log_dir)
+
 	while display.IsOpen():
+
+		if(time_evaluate):
+			t0 = time.time()
 
 		# Get img from realsense in Numpy array format
 		depth_img, color_img = cam.get_frame_cv()
@@ -77,6 +101,9 @@ if __name__ == '__main__':
 
 		# convert from rgb8 (default format for realsense color frame in this program) to rgba32f
 		jetson.utils.cudaConvertColor(color_img_cuda, network_input_img)
+
+		if(time_evaluate):
+			print("Time to convert from numpy array to cuda: ", time.time() - t0)
 
 		# detect objects in the image (with overlay)
 		detections = net.Detect(network_input_img, cam.color_frame_width, cam.color_frame_height, opt.overlay)
@@ -94,14 +121,21 @@ if __name__ == '__main__':
 		display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 
 		# print out performance info
-		# net.PrintProfilerTimes()
+		if(time_evaluate):
+			net.PrintProfilerTimes()
 
 		if(len(detections) != 0):
 			for detection in detections:
-				if detection.Confidence > cfg['conf_threshold']:
+				if detection.Confidence > conf_threshold:
 					print(detection)
 					obj_center_row = int(detection.Center[1])
 					obj_center_col = int(detection.Center[0])
+
+					if(is_logging):
+						log_img = cv.cvtColor(color_img, cv.COLOR_RGB2BGR)
+						cv.circle(log_img, (obj_center_col, obj_center_row), 20, (0, 0, 255))
+						cv.imwrite(current_log_dir + '/' + str(time.time()) + '.jpg', log_img)
+
 					# compute target coordinate in camera frame
 					target_in_cam_z = depth_img[obj_center_row, obj_center_col] * cam.depth_scale
 					target_in_cam_x = np.multiply(obj_center_col - cam.intrinsics['cx'], target_in_cam_z / cam.intrinsics['fx'])
@@ -114,10 +148,15 @@ if __name__ == '__main__':
 
 					print("Target in base frame:\n", target_in_base)
 
-					arm.gripperOpen()
-					arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2], 3.14, 0, 0])
-					arm.gripperGrasp(width = 0.01, force = 1)
+					prepare_pos = [target_in_base[0], target_in_base[1], target_in_base[2] + grasp_pre_offset + effector_offset, 3.14, 0, 0]
+					arm.move_p(prepare_pos)
 
+					gripper.gripper_open()
+					arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2] + effector_offset, 3.14, 0, 0])
+					gripper.gripper_close()
 
+					arm.move_p(initial_pose)
+					gripper.gripper_open()
 
-
+		# pause for a bit
+		# time.sleep(3)

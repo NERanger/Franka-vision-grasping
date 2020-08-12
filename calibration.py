@@ -131,6 +131,7 @@ if __name__ == '__main__':
     cube_size = cfg['sample_cube_size']
 
     maker_size = cfg['marker_size']
+    sample_repeat_num = cfg['marker_repeat_sample']
 
     x_step = cfg['x_stride']
     y_step = cfg['y_stride']
@@ -167,9 +168,14 @@ if __name__ == '__main__':
 
     cv2.namedWindow('visualize_img', cv2.WINDOW_AUTOSIZE)
 
+    counter = 0
+
     for i in range(cube_size):
         for j in range(cube_size):
             for k in range(cube_size):
+                counter = counter + 1
+                print("#" + str(counter) + " out of " + str(cube_size*cube_size*cube_size) + " sample points")
+
                 arm_target_x = round(x + x_step * i, 5)
                 arm_target_y = round(y + y_step * j, 5)
                 arm_target_z = round(z + z_step * k, 5)
@@ -186,7 +192,7 @@ if __name__ == '__main__':
                 
                 _, color_frame = cam.get_frame_cv()
 
-                cam_T_marker_R, cam_T_marker_t, visualize_img = ar_marker.get_mat_cam_T_marker(color_frame, maker_size, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs())
+                cam_T_marker_R, cam_T_marker_t, visualize_img = ar_marker.get_mat_cam_T_marker(color_frame, maker_size, cam.get_intrinsics_matrix(), cam.get_distortion_coeffs(), sample_repeat_num)
                 base_T_EE_R, base_T_EE_t = arm.getMatrixO_T_EE()
 
                 # print("End Effector in base frame:\n", "R:\n", base_T_EE_R, "t:\n", base_T_EE_t)
@@ -240,4 +246,4 @@ if __name__ == '__main__':
     print("Loaded t:\n", load_t)
     print("-------- End ----------")
 
-    #check_trans_matrix_from_file("/home/jetsonx-bionicdl/JingYL/repos/franka_ctl_py/cali_data/2020-08-01-09:57:10.492520.npz")
+    check_trans_matrix_from_file(filename_npz)

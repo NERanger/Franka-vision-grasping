@@ -23,11 +23,21 @@ def detect_ar_marker(color_frame, intr_matrix, dist_coeff):
 
     return marker_corners, marker_ids
 
-def get_mat_cam_T_marker(color_frame, maker_size, intr_matrix, dist_coeff):
+def get_mat_cam_T_marker(color_frame, maker_size, intr_matrix, dist_coeff, repeat_num):
     corners, ids = detect_ar_marker(color_frame, intr_matrix, dist_coeff)
 
     if len(corners) > 0:
-        R, t, _ = cv.aruco.estimatePoseSingleMarkers(corners, maker_size, intr_matrix, dist_coeff)
+        R_list = []
+        t_list = []
+
+        for i in range(repeat_num):
+            R_tmp, t_tmp, _ = cv.aruco.estimatePoseSingleMarkers(corners, maker_size, intr_matrix, dist_coeff)
+
+            R_list.append(R_tmp)
+            t_list.append(t_tmp)
+
+        R = np.mean(R_list, 0)
+        t = np.mean(t_list, 0)
 
         visualize_img = cv.aruco.drawAxis(color_frame, intr_matrix, dist_coeff, R, t, 0.03)
 
