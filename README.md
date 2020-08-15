@@ -25,6 +25,20 @@ This repo is for grasping task on the following setup.
   * matplotlib (for calibration visualization)
   * pytransform3d (for calibration visualization)
 
+## Usage
+
+### DetectNet trained on COCO-bottle
+
+```bash
+python3 vision_grasping.py --network=coco-bottle
+```
+
+### Self-trained ONNX model
+
+```bash
+python3 vision_grasping.py --model=<path-to-your-model> --labels=<path-to-your-label> --input-blob=input_0 --output-cvg=scores --output-bbox=boxes
+```
+
 ## Troubleshooting
 
 * After flash the Jetson Xavier with JetPack 4.4 and realtime kernel patch, `sudo jetson_clocks` may not able to turn on the fan, which will lead to severe heat accumulation. You can use `echo 255 | sudo tee /sys/devices/pwm-fan/target-pwm` to manually set the fan at maximum speed.
