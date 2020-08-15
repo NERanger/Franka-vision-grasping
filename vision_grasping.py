@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
 	grasp_width = cfg['grasp_width']
 
-	display = jetson.utils.glDisplay()
+	# display = jetson.utils.glDisplay()
 
 	print("Moving to initial position...")
 	arm.move_p(initial_pose)
@@ -84,7 +84,7 @@ if __name__ == '__main__':
 		os.mkdir(current_log_dir)
 		print("Set log dir to " + current_log_dir)
 
-	while display.IsOpen():
+	while(True):
 
 		if(time_evaluate):
 			t0 = time.time()
@@ -108,6 +108,14 @@ if __name__ == '__main__':
 		# detect objects in the image (with overlay)
 		detections = net.Detect(network_input_img, cam.color_frame_width, cam.color_frame_height, opt.overlay)
 
+		visual_img = cv.cvtColor(jetson.utils.cudaToNumpy(network_input_img), cv.COLOR_RGBA2BGR)
+		visual_img = visual_img.astype(np.uint8)
+
+		print(visual_img)
+
+		cv.imshow("Result", visual_img)
+		cv.waitKey(100)
+
 		# print the detections
 		print("detected {:d} objects in image".format(len(detections)))
 
@@ -115,10 +123,11 @@ if __name__ == '__main__':
 			#print(detection)
 
 		# render the image
-		display.RenderOnce(network_input_img, cam.color_frame_width, cam.color_frame_height)
+		# Turn off due to X11 error with opengl
+		# display.RenderOnce(network_input_img, cam.color_frame_width, cam.color_frame_height)
 
 		# update the title bar
-		display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
+		# display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 
 		# print out performance info
 		if(time_evaluate):

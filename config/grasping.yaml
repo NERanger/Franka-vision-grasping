@@ -7,8 +7,8 @@ initial_position:
   - 0.0
 
 drop_position:
-  - 0.45
-  - 0.0
+  - 0.35
+  - -0.05
   - 0.30
   - 3.14
   - 0.0
@@ -30,7 +30,7 @@ width: 1280               # desired width of camera stream
 height: 720               # desired height of camera stream
 fps: 30                   # desired frame rate from camera
 
-matrix_path: /home/jetsonx-bionicdl/JingYL/repos/franka_ctl_py/cali_data/2020-08-11-11:29:21.275573.csv
+matrix_path: /home/bionicdl/repos/Franka-vision-grasping/cali_data/2020-08-11-11:29:21.275573.csv
 
 time_evaluate: false
 log: false
