@@ -1,0 +1,17 @@
+conf_threshold: 0.80      # minimum confidence to launch grasping stage
+# detection_threshold: 0.5  # minimum detection threshold to use
+
+grasp_width: 0.050
+
+detection_turncation: 640 # assume the detection box center locates at (x, y), when x < detection_turncation, the detection won't be used for grasping
+
+# network: coco-bottle      # pre-trained model to load
+# overlay: box,labels,conf  # detection overlay flags (e.g. --overlay=box,labels,conf)\nvalid combinations are:  'box', 'labels', 'conf', 'none'
+width: 1280               # desired width of camera stream
+height: 720               # desired height of camera stream
+fps: 30                   # desired frame rate from camera
+
+matrix_path: /home/bionicdl/repos/Franka-vision-grasping/cali_data/2020-08-11-11:29:21.275573.csv
+
+time_evaluate: false
+log: false
