@@ -83,7 +83,7 @@ if __name__ == '__main__':
 		visual_img = cv.cvtColor(jetson.utils.cudaToNumpy(network_input_img), cv.COLOR_RGBA2BGR)
 		visual_img = visual_img.astype(np.uint8)
 
-		print(visual_img)
+		# print(visual_img)
 
 		cv.imshow("Result", visual_img)
 		cv.waitKey(100)

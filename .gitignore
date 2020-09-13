@@ -6,3 +6,4 @@ franka/RobotDriver/build/
 cali_data/**
 networks/**
 log/**
+yolov5_module.*
