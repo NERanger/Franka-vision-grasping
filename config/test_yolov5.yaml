@@ -12,3 +12,6 @@ height: 720               # desired height of camera stream
 fps: 30                   # desired frame rate from camera
 
 engine_path: /home/bionicdl/repos/Franka-vision-grasping/networks/yolov5-s/yolov5s.engine
+
+input_width: 608
+input_height: 608
