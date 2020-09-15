@@ -79,7 +79,7 @@ if __name__ == '__main__':
     cfg = read_cfg('config/test_yolov5.yaml')
     cam = realsense(frame_width = cfg['width'], frame_height = cfg['height'], fps = cfg['fps'])
 
-    engine_path = cfg['engine_path']    # Path to yolov5 tensorrt engine file
+    engine_path = cfg['engine_path']
     input_w = cfg['input_width']
     input_h = cfg['input_height']
 
