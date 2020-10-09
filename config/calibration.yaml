@@ -1,7 +1,7 @@
 initial_position:
   - 0.45
   - 0.0 
-  - 0.15
+  - 0.25
   - 2.0
   - 0.0
   - 0.0
@@ -16,7 +16,7 @@ rotation_lower_limit: -0.5
 marker_size: 0.05 # in meter
 marker_repeat_sample: 10
 
-sample_cube_size: 3 # Totally sampled points = size ^ 3
+sample_cube_size: 4 # Totally sampled points = size ^ 3
 
 board_offset_x: 0
 board_offset_y: 0

@@ -1,0 +1,34 @@
+initial_position:
+  - 0.52251176
+  - 0.23896295
+  - 0.72045298
+  - -3.11484015
+  - -0.91982261
+  - 0.03911724
+
+check_position:
+  - 0.51393458
+  - 0.05320962
+  - 0.57929626
+  - 2.9940303
+  - -0.61018079
+  - -0.42611068
+
+drop_position:
+  - 0.51555664
+  - 0.10616657
+  - 0.18820931
+  - 3.10498733
+  - -0.12119705
+  - -0.51808127
+
+grasp_prepare_offset: 0.30
+effector_offset: 0.20    # distance from flann center to the grasping center (in meter)
+
+width: 640               # desired width of camera stream
+height: 480               # desired height of camera stream
+fps: 30                   # desired frame rate from camera
+
+check_threshold: 10500
+
+matrix_path: /home/bionicdl/repos/Franka-vision-grasping/cali_data/2020-09-27-17:19:23.442036.csv

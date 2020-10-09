@@ -41,6 +41,7 @@ class FrankaController(ArmController):
         O_T_EE = np.array(self.fk.getO_T_EE())
         O_Matrix = np.reshape(O_T_EE,(4,4),order='F')
         O_Matrix_R = O_Matrix[:3, :3]
+        O_Matrix_t = O_Matrix[:3, 3:].squeeze(1)
 
         # For debugging on jetson
         # Add by JingYL 20200718
@@ -56,7 +57,7 @@ class FrankaController(ArmController):
         # #F_T_EE: 4*4 Matrix from Flange to EE
         # F_T_EE = np.array(self.fk.getF_T_EE())
         # F_Matrix = np.reshape(F_T_EE,(4,4),order='F')
-        return O_euler
+        return O_Matrix_t, O_euler
 
     def getJoint(self):
         return self.fk.getJointPos()

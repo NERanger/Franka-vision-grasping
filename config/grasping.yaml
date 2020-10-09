@@ -18,7 +18,7 @@ conf_threshold: 0.80      # minimum confidence to launch grasping stage
 # detection_threshold: 0.5  # minimum detection threshold to use
 
 grasp_prepare_offset: 0.10
-effector_offset: 0.25    # distance from flann center to the grasping center (in meter)
+effector_offset: 0.05    # distance from flann center to the grasping center (in meter)
 
 grasp_width: 0.050
 
@@ -30,7 +30,7 @@ width: 1280               # desired width of camera stream
 height: 720               # desired height of camera stream
 fps: 30                   # desired frame rate from camera
 
-matrix_path: /home/bionicdl/repos/Franka-vision-grasping/cali_data/2020-08-11-11:29:21.275573.csv
+matrix_path: /home/bionicdl/repos/Franka-vision-grasping/cali_data/2020-09-27-17:19:23.442036.csv
 
 time_evaluate: false
 log: false

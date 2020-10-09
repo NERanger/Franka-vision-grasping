@@ -246,4 +246,4 @@ if __name__ == '__main__':
     print("Loaded t:\n", load_t)
     print("-------- End ----------")
 
-    check_trans_matrix_from_file(filename_npz)
+    #check_trans_matrix_from_file(filename_npz)

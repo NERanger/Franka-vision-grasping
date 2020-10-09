@@ -5,11 +5,11 @@ import sys
 import numpy as np
 import cv2 as cv
 
-import yolov5_module
 import gripper_control as gripper
 
 from realsense_wapper import realsense
 from franka.FrankaController import FrankaController
+from get_obj_by_color import get_obj_bbox
 
 def read_cfg(path):
     with open(path, 'r') as stream:
@@ -94,25 +94,18 @@ if __name__ == '__main__':
     ROOT = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(ROOT)
 
-    cfg = read_cfg(ROOT + '/config/grasping_yolov5.yaml')
+    cfg = read_cfg(ROOT + '/config/grasping _colorseg.yaml')
 
     arm = FrankaController(ROOT + '/config/franka.yaml')
     cam = realsense(frame_width = cfg['width'], frame_height = cfg['height'], fps = cfg['fps'])
 
-    # yolov5 config
-    engine_path = cfg['engine_path'] 
-    input_w = cfg['input_width']
-    input_h = cfg['input_height']
-
     # grasping config
     initial_pose = cfg['initial_position']
+    check_position = cfg['check_position']
     drop_position = cfg['drop_position']
-    conf_threshold = cfg['conf_threshold']
 
     grasp_pre_offset = cfg['grasp_prepare_offset']
     effector_offset = cfg['effector_offset']
-
-    detection_turncation = cfg['detection_turncation']
 
     # Load calibration matrix
     R, t = load_cam_T_base_matrix(cfg['matrix_path'])
@@ -122,68 +115,68 @@ if __name__ == '__main__':
     arm.move_p(initial_pose)
     print("Moving to initial position... Done")
 
-    print("Initializing yolov5 engine...")
-    yolov5_module.init_inference(engine_path)
-    print("Initializing yolov5 engine... Done")
-
     stored_exception = None
 
+    # arm.move_p(check_position) # Test
+
     while True:
+        # _, color_img = cam.get_frame_cv()
+        # bbox = get_obj_bbox(color_img)
+        # print("Area: {}".format(bbox[2]*bbox[3]))
+        # cv.rectangle(color_img,(bbox[0],bbox[1]),(bbox[0]+bbox[2],bbox[1]+bbox[3]),(0,255,0),2)
+        # cv.imshow('result', color_img)
+        # cv.waitKey(10)
         try:
             if stored_exception:
                 break
 
             depth_img, color_img = cam.get_frame_cv()
-            img_inf = color_img.copy()
+            bbox = get_obj_bbox(color_img)
 
-            res = yolov5_module.image_inference(img_inf)
+            cv.rectangle(color_img,(bbox[0],bbox[1]),(bbox[0]+bbox[2],bbox[1]+bbox[3]),(0,255,0),2)
 
-            for r in res:
-                rect = get_rect(color_img, r.bbox, input_w, input_h)
-                draw_bbox(r, rect, color_img)
+            obj_center_row = int(bbox[1] + bbox[3] / 2)
+            obj_center_col = int(bbox[0] + bbox[2] / 2)
+            #print("row: {}, col: {}".format(obj_center_row, obj_center_col))
 
-                # Visualization
-                cv.imshow('result', color_img)
-                cv.waitKey(5)
+            cv.circle(color_img, (obj_center_col, obj_center_row), 2, (0,255,0), 2)
 
-                if int(r.classid) == 39 and r.conf > conf_threshold:
-                    obj_center_row = int(rect[1] + rect[3] / 2)
-                    obj_center_col = int(rect[0] + rect[2] / 2)
-                    #print("row: {}, col: {}".format(obj_center_row, obj_center_col))
+            # Visualization
+            cv.imshow('result', color_img)
+            cv.waitKey(10)
 
-                    if(obj_center_col < detection_turncation):
-                        print("Discard detection result: in turncation area")
-                        continue
+            # compute target coordinate in camera frame
+            target_in_cam_z = depth_img[obj_center_row, obj_center_col] * cam.depth_scale
+            target_in_cam_x = np.multiply(obj_center_col - cam.intrinsics['cx'], target_in_cam_z / cam.intrinsics['fx'])
+            target_in_cam_y = np.multiply(obj_center_row - cam.intrinsics['cy'], target_in_cam_z / cam.intrinsics['fy'])
 
-                    # compute target coordinate in camera frame
-                    target_in_cam_z = depth_img[obj_center_row, obj_center_col] * cam.depth_scale
-                    target_in_cam_x = np.multiply(obj_center_col - cam.intrinsics['cx'], target_in_cam_z / cam.intrinsics['fx'])
-                    target_in_cam_y = np.multiply(obj_center_row - cam.intrinsics['cy'], target_in_cam_z / cam.intrinsics['fy'])
+            print("Target in camera frame:\n", [target_in_cam_x, target_in_cam_y, target_in_cam_z])
 
-                    print("Target in camera frame:\n", [target_in_cam_x, target_in_cam_y, target_in_cam_z])
+            target_in_cam = np.array([target_in_cam_x, target_in_cam_y, target_in_cam_z])
+            target_in_base = R.dot(target_in_cam) + t
 
-                    target_in_cam = np.array([target_in_cam_x, target_in_cam_y, target_in_cam_z])
-                    target_in_base = R.dot(target_in_cam) + t
+            print("Target in base frame:\n", target_in_base)
 
-                    print("Target in base frame:\n", target_in_base)
+            prepare_pos = [target_in_base[0], target_in_base[1], target_in_base[2] + grasp_pre_offset + effector_offset, 3.14, 0, 0]
+            arm.move_p(prepare_pos)
 
-                    prepare_pos = [target_in_base[0], target_in_base[1], target_in_base[2] + grasp_pre_offset + effector_offset, 3.14, 0, 0]
-                    arm.move_p(prepare_pos)
+            gripper.gripper_open()
+            arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2] + effector_offset, 3.14, 0, 0])
+            gripper.gripper_close()
 
-                    gripper.gripper_open()
-                    arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2] + effector_offset, 3.14, 0, 0])
-                    gripper.gripper_close()
-                    
-                    # Move to drop position and drop object
-                    arm.move_p(initial_pose)
-                    arm.move_p(drop_position)
-                    gripper.gripper_open()
+            # Move to check position
+            arm.move_p(check_position)
 
-                    # Back to initial position
-                    arm.move_p(initial_pose)
+            # TODO: perform success check
+            
+            # Move to drop position and drop object
+            arm.move_p(drop_position)
+            gripper.gripper_open()
+
+            # Back to initial position
+            arm.move_p(initial_pose)
 
         except KeyboardInterrupt:
             stored_exception = sys.exc_info()
 
     cv.destroyAllWindows()
-    yolov5_module.destory_inference()

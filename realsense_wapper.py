@@ -3,13 +3,17 @@ import numpy as np
 import cv2
 
 class realsense(object):
-    def __init__(self, frame_width = 640, frame_height = 480, fps = 30):
+    def __init__(self, frame_width = 640, frame_height = 480, fps = 30, color_format = "bgr8"):
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
 
         config = rs.config()
         config.enable_stream(rs.stream.depth, frame_width, frame_height, rs.format.z16, fps)
-        config.enable_stream(rs.stream.color, frame_width, frame_height, rs.format.rgb8, fps)
+
+        if color_format == "bgr8":
+            config.enable_stream(rs.stream.color, frame_width, frame_height, rs.format.bgr8, fps)
+        elif color_format == "rgb8":
+            config.enable_stream(rs.stream.color, frame_width, frame_height, rs.format.rgb8, fps)
 
         self.color_frame_width = frame_width
         self.color_frame_height = frame_height
@@ -35,7 +39,7 @@ class realsense(object):
         print("------ Realsense start info ------ ")
         print("Frame size: " + str(frame_width) + "*" + str(frame_height))
         print("FPS: " + str(fps))
-        print("Color frame format: ", rs.format.rgb8)
+        print("Color frame format: ", color_format)
         print("Depth frame format: ", rs.format.z16)
         print("Depth scale: " + str(self.depth_scale))
         print("Intrinsics: " + str(self.intrinsics))
@@ -62,7 +66,7 @@ class realsense(object):
         return np.array(self.distortion_coeffs)
 
 if __name__ == '__main__':
-    cam = realsense(1280, 720, 30)
+    cam = realsense()
     intr = cam.get_intrinsics_matrix()
     print(intr)
     coeffs = cam.get_distortion_coeffs()
