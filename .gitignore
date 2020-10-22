@@ -10,3 +10,4 @@ networks/ssd-mobilenet-fruit
 networks/yolov5
 log/**
 yolov5_module.*
+result/
