@@ -1,6 +1,9 @@
 import yaml
 import os
 import sys
+import time
+import csv
+from datetime import datetime
 
 import numpy as np
 import cv2 as cv
@@ -9,7 +12,7 @@ import gripper_control as gripper
 
 from realsense_wapper import realsense
 from franka.FrankaController import FrankaController
-from get_obj_by_color import get_obj_bbox
+from get_obj_by_color import get_obj_bbox, check_gripper_bbox
 
 def read_cfg(path):
     with open(path, 'r') as stream:
@@ -107,6 +110,10 @@ if __name__ == '__main__':
     grasp_pre_offset = cfg['grasp_prepare_offset']
     effector_offset = cfg['effector_offset']
 
+    check_threshold = cfg['check_threshold']
+
+    attmp_num = cfg['attmp_num']
+
     # Load calibration matrix
     R, t = load_cam_T_base_matrix(cfg['matrix_path'])
     print("Load R, t from file:\nR:\n", R, "\nt:\n", t)
@@ -117,9 +124,36 @@ if __name__ == '__main__':
 
     stored_exception = None
 
-    # arm.move_p(check_position) # Test
+    # get the threshold of the gripper
+    # gripper.gripper_close()
+    # arm.move_p(check_position) 
+    # area = []
+    # for i in range(10):
+    #     _, color_img = cam.get_frame_cv()
+    #     bbox = check_gripper_bbox(color_img)
+    #     area.append(bbox[2]*bbox[3])
+    #     print("Area: {}".format(bbox[2]*bbox[3]))
+    #     cv.rectangle(color_img,(bbox[0],bbox[1]),(bbox[0]+bbox[2],bbox[1]+bbox[3]),(0,255,0),2)
+    #     cv.imshow('result', color_img)
+    #     cv.waitKey(10)
+    # sum = 0
+    # for num in area:
+    #     sum += num
+    # area_threshold = sum / len(area) + sum / len(area) * 0.02
+    # print("Area_threshold: {}".format(area_threshold))
 
-    while True:
+    arm.move_p(initial_pose)
+
+    csv_filename = ROOT + "/result/" + str(datetime.now()).replace(' ', '-') + ".csv"
+    csv_header = ['num', 'if_success']
+
+    with open(csv_filename, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(csv_header)
+
+    # arm.move_p(check_position) # Test
+    current_num = 0
+    while current_num < attmp_num:
         # _, color_img = cam.get_frame_cv()
         # bbox = get_obj_bbox(color_img)
         # print("Area: {}".format(bbox[2]*bbox[3]))
@@ -150,12 +184,12 @@ if __name__ == '__main__':
             target_in_cam_x = np.multiply(obj_center_col - cam.intrinsics['cx'], target_in_cam_z / cam.intrinsics['fx'])
             target_in_cam_y = np.multiply(obj_center_row - cam.intrinsics['cy'], target_in_cam_z / cam.intrinsics['fy'])
 
-            print("Target in camera frame:\n", [target_in_cam_x, target_in_cam_y, target_in_cam_z])
+            # print("Target in camera frame:\n", [target_in_cam_x, target_in_cam_y, target_in_cam_z])
 
             target_in_cam = np.array([target_in_cam_x, target_in_cam_y, target_in_cam_z])
             target_in_base = R.dot(target_in_cam) + t
 
-            print("Target in base frame:\n", target_in_base)
+            # print("Target in base frame:\n", target_in_base)
 
             prepare_pos = [target_in_base[0], target_in_base[1], target_in_base[2] + grasp_pre_offset + effector_offset, 3.14, 0, 0]
             arm.move_p(prepare_pos)
@@ -163,11 +197,33 @@ if __name__ == '__main__':
             gripper.gripper_open()
             arm.move_p([target_in_base[0], target_in_base[1], target_in_base[2] + effector_offset, 3.14, 0, 0])
             gripper.gripper_close()
+            time.sleep(0.5)
 
             # Move to check position
-            arm.move_p(check_position)
+            # arm.move_p(check_position)
+            arm.move_p(initial_pose)
 
-            # TODO: perform success check
+            # perform success check
+            _, color_check = cam.get_frame_cv()
+            bbox_check = get_obj_bbox(color_check)
+
+            data = []
+
+            print("current area = %f" % (bbox_check[2] * bbox_check[3]))
+            print("threshold area = %f" % (check_threshold))
+
+            if(bbox_check[2] * bbox_check[3] < check_threshold):
+                print("Grasping SUCCESS in attempt {}".format(current_num))
+                data.append(str(current_num))
+                data.append(str(1))   # Success
+            else:
+                print("Grasping FAIL in attempt {}".format(current_num))
+                data.append(str(current_num))
+                data.append(str(0))   # Fail
+
+            with open(csv_filename, 'a+', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(data)
             
             # Move to drop position and drop object
             arm.move_p(drop_position)
@@ -175,6 +231,8 @@ if __name__ == '__main__':
 
             # Back to initial position
             arm.move_p(initial_pose)
+
+            current_num += 1
 
         except KeyboardInterrupt:
             stored_exception = sys.exc_info()
