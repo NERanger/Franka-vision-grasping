@@ -24,6 +24,13 @@ This repo is for grasping task on the following setup.
   * yaml
   * matplotlib (for calibration visualization)
   * pytransform3d (for calibration visualization)
+  
+## TODO
+
+* complete README (currently the usage info is not fully correct and it requires additional setup related with Jetson-inference)
+* Add yolov5 example
+
+> The requirement info is correct
 
 ## Usage
 
